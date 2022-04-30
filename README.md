@@ -2,7 +2,7 @@
 
 ## Don't Forget to fill data
 1. /main
-  - ssid
-  - password
+    - ssid
+    - password
 2. /blynk.h
-  - BLYNK_AUTH_TOKEN
+    - BLYNK_AUTH_TOKEN
