@@ -3,6 +3,7 @@
 #define BLYNK_TEMPLATE_ID "TMPLZ8kxGcuI"
 #define BLYNK_DEVICE_NAME "RTC LED Clock"
 #define BLYNK_AUTH_TOKEN ""
+char auth[] = BLYNK_AUTH_TOKEN;
 
 #define BLYNK_PRINT Serial
 
@@ -10,105 +11,135 @@
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
 
-#include <TimeLib.h>
 #include <WidgetRTC.h>
 
-#include <WidgetTerminal.h>
-
-//#include <TimeInputParam.h>
-
-/* MCP79412RTC Lib */
-#include "timeUtility.h"
-//#include "alarmClock.h"
-#include <TimeLib.h>
-#include <MCP79412RTC.h>
-MCP79412RTC RTC;
-
-#include "AlarmClock.cpp"
-AlarmClock alarmC;
-/*                 */
-
-char auth[] = BLYNK_AUTH_TOKEN;
-
-
 BlynkTimer timer;
-
 WidgetRTC widgetRTC;
-WidgetTerminal terminal(V2);
 
+/* communicate to MCP79411 module */
+#include <MCP79412RTC.h>    // https://github.com/JChristensen/MCP79412RTC
+MCP79412RTC RTC;
+/* ------------------------------ */
+
+/* TimeAlarms library */
+#include "AlarmClock.h"
+/* ------------------ */
+
+/* Countimer libraries */
+#include "countdownTimer.h"
+#include "countUpTimer.h"
+/* ------------------- */
+
+// Alarm Clock 1 Input
 BLYNK_WRITE(V2) {
-  // if you type "Marco" into Terminal Widget - it will respond: "Polo:"
-  if (String("Marco") == param.asStr()) {
-    terminal.println("You said: 'Marco'");
-    terminal.println("I said: 'Polo'");
-  } else {
-    // Send it back
-    terminal.print("You said:");
-    terminal.write(param.getBuffer(), param.getLength());
-    terminal.println();
-  }
-
-  // Ensure everything is sent
-  terminal.flush();
+  alarmClock1_Input = param[0].asLong();  // unix time (seconds)
+  alarmClock1_setup();
 }
 
-// Alarm Clock input
+// Alarm Clock 1 Button: On_Off
 BLYNK_WRITE(V3) {
-  long alarmClockInput = param[0].asLong();  // unix time (seconds)
+  int alarmClock1_Button = param.asInt();
 
-  alarmC.init(alarmClockInput);
+  alarmClock1_switch(alarmClock1_Button);  
 }
+
+// Alarm Clock 2 Input
 BLYNK_WRITE(V4) {
-  TimeInputParam t(param);
-
-  // Process start time
-  if (t.hasStartTime()) {
-    Serial.println(String("Start: ") +
-                   t.getStartHour() + ":" +
-                   t.getStartMinute() + ":" +
-                   t.getStartSecond());
-  } else if (t.isStartSunrise()) {
-    Serial.println("Start at sunrise");
-  } else if (t.isStartSunset()) {
-    Serial.println("Start at sunset");
-  }
-
-  // Process stop time
-  if (t.hasStopTime()) {
-    Serial.println(String("Stop: ") +
-                   t.getStopHour() + ":" +
-                   t.getStopMinute() + ":" +
-                   t.getStopSecond());
-  } else if (t.isStopSunrise()) {
-    Serial.println("Stop at sunrise");
-  } else if (t.isStopSunset()) {
-    Serial.println("Stop at sunset");
-  }
-
-  // Process timezone
-  // Timezone is already added to start/stop time
-  Serial.println(String("Time zone: ") + t.getTZ());
-
-  // Get timezone offset (in seconds)
-  Serial.println(String("Time zone offset: ") + t.getTZ_Offset());
-
-  // Process weekdays (1. Mon, 2. Tue, 3. Wed, ...)
-  for (int i = 1; i <= 7; i++) {
-    if (t.isWeekdaySelected(i)) {
-      Serial.println(String("Day ") + i + " is selected");
-    }
-  }
-
-  Serial.println();
+  alarmClock2_Input = param[0].asLong();  // unix time (seconds)
+  alarmClock2_setup();
 }
 
-/* source: https://examples.blynk.cc/?board=ESP32&shield=ESP32%20WiFi&example=Widgets%2FRTC */
-void clockDisplay() {
+// Alarm Clock 2 Button: On_Off
+BLYNK_WRITE(V5) {
+  int alarmClock2_Button = param.asInt();
+
+  alarmClock2_switch(alarmClock2_Button);  
+}
+
+// Alarm Clock 3 Input
+BLYNK_WRITE(V6) {
+  alarmClock3_Input = param[0].asLong();  // unix time (seconds)
+  alarmClock3_setup();
+}
+
+// Alarm Clock 3 Button: On_Off
+BLYNK_WRITE(V7) {
+  int alarmClock3_Button = param.asInt();
+
+  alarmClock3_switch(alarmClock3_Button);  
+}
+
+// Count Up Timer Button: Start_Pause
+BLYNK_WRITE(V9) {
+  int countUpStart_PauseButton = param.asInt();
+
+  countUpTimerButton_StartPause(countUpStart_PauseButton);
+}
+
+// Count Up Timer Button: Reset
+BLYNK_WRITE(V10) {
+  int countUpResetButton = param.asInt();
+
+  countUpTimerButton_Reset(countUpResetButton);
+}
+
+// Countdown Timer input
+BLYNK_WRITE(V11) {
+  countDownInput = param[0].asLong();             // unix time (seconds)
+
+  countdownTimerInput();
+}
+
+// Countdown Timer Button: Start_Stop
+BLYNK_WRITE(V13) {
+  int countdownStart_StopButton = param.asInt();
+  
+  countdownTimerButton_StartStop(countdownStart_StopButton);
+}
+
+// Countdown Timer Button: Pause_Continue
+BLYNK_WRITE(V14) {
+  int countdownPause_ContinueButton = param.asInt();
+
+  countdownTimerButton_PauseContinue(countdownPause_ContinueButton);
+}
+
+BLYNK_CONNECTED() {
+  widgetRTC.begin();                    // Synchronize time on connection
+  Blynk.syncAll();                      // Request server to re-send latest values for all pins on board
+
+  // if system time is not set & synced
   if (timeStatus() != timeSet) {                                  // TimeLib.timeStatus
     setTime(hour(), minute(), second(), day(), month(), year());  // set the system time to current date & time
     RTC.set(now());                                               // set the RTC from the system time
   }
-  
+
+  // set default Alarm Clock 1
+  Blynk.virtualWrite(V2, 0);
+  Blynk.virtualWrite(V3, 0);
+
+  // set default Alarm Clock 2
+  Blynk.virtualWrite(V4, 0);
+  Blynk.virtualWrite(V5, 0);
+
+  // set default Alarm Clock 3
+  Blynk.virtualWrite(V6, 0);
+  Blynk.virtualWrite(V7, 0);
+
+  // set default Count Up Timer 
+  Blynk.virtualWrite(V8, "00:00:00");   
+  Blynk.virtualWrite(V9, 0);
+  Blynk.virtualWrite(V10, 0);
+
+  // set default Countdown Timer
+  Blynk.virtualWrite(V11, 0);    
+  Blynk.virtualWrite(V12, "HH:MM:SS"); 
+  Blynk.virtualWrite(V13, 0); 
+  Blynk.virtualWrite(V14, 0);        
+}
+
+/* source: https://examples.blynk.cc/?board=ESP32&shield=ESP32%20WiFi&example=Widgets%2FRTC */
+void clockDisplay() {
   String displayCurrentTime = String( displayDigits( hour() ) ) + ":" + displayDigits( minute() ) + ":" + displayDigits( second() );
   String displayCurrentDate = String( day() ) + "-" + month() + "-" + year();
 
@@ -116,29 +147,22 @@ void clockDisplay() {
   Blynk.virtualWrite(V1, displayCurrentDate);  // Send date to the App
 }
 
-BLYNK_CONNECTED() {
-  widgetRTC.begin();    // Synchronize time on connection
-}
-
+// setup method
 void setupBlynk(char* ssid, char* pass) {
   Blynk.begin(auth, ssid, pass);
  
-  setSyncInterval(10 * 60); // TimeLib.h Sync interval in 10*60 seconds (10 minutes)
+  setSyncInterval(10 * 60);                 // TimeLib.h Sync interval in 10*60 seconds (10 minutes)
 
   timer.setInterval(1000L, clockDisplay);   // Display digital clock every 1 seconds
-
-  terminal.clear();   // Clear the terminal content
 }
 
+// loop method
 void connectToBlynk() {
   Blynk.run();
   timer.run();
 
-  if ( alarmC.alarmed(now()) ) {
-    Serial.println("Warning !!!");
-    delay(1000);
-    return;
-  }
-  
+  Alarm.delay(1000);
 
+  countUpTimer.run();
+  countdownTimer.run();
 }
