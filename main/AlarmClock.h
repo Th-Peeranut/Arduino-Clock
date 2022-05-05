@@ -1,5 +1,5 @@
 #include <BlynkSimpleEsp32.h>
-#include <TimeAlarms.h>
+#include <TimeAlarms.h> // https://github.com/PaulStoffregen/TimeAlarms
 
 AlarmId alarmClockId_1;
 AlarmId alarmClockId_2;
@@ -26,14 +26,17 @@ uint8_t* _secondsToHMS(unsigned long sec) {
 }
 
 void alarmClock1_complete() {
+  Blynk.logEvent("Alarm_Clock_1", "นาฬิกาปลุก 1");
   Blynk.virtualWrite(V3, 0);    // set On_Off button to waiting for restarting
 }
 
 void alarmClock2_complete() {
+  Blynk.logEvent("Alarm_Clock_2", "นาฬิกาปลุก 2");
   Blynk.virtualWrite(V5, 0);    // set On_Off button to waiting for restarting
 }
 
 void alarmClock3_complete() {
+  Blynk.logEvent("Alarm_Clock_3", "นาฬิกาปลุก 3");
   Blynk.virtualWrite(V7, 0);    // set On_Off button to waiting for restarting
 }
 
@@ -60,8 +63,11 @@ void alarmClock1_switch(int alarmClock1_Button) {
     Blynk.virtualWrite(V3, 0);                                  // stay in current state
     return;
   }
+  else if (alarmClock1_Button == 1) {                           // Alarm Clock 1 On
+    Alarm.enable(alarmClockId_1);
+  }
   else if (alarmClock1_Button == 0) {                           // Alarm Clock 1 Off
-    Alarm.free(alarmClockId_1);
+    Alarm.disable(alarmClockId_1);
   }
 }
 
@@ -69,6 +75,9 @@ void alarmClock2_switch(int alarmClock2_Button) {
   if (alarmClock2_Input == NULL || alarmClock2_Input == 0) {
     Blynk.virtualWrite(V5, 0);                                  // stay in current state
     return;
+  }
+  else if (alarmClock2_Button == 1) {                           // Alarm Clock 2 On
+    Alarm.enable(alarmClockId_2);
   }
   else if (alarmClock2_Button == 0) {                           // Alarm Clock 2 Off
     Alarm.free(alarmClockId_2);
@@ -79,6 +88,9 @@ void alarmClock3_switch(int alarmClock3_Button) {
   if (alarmClock3_Input == NULL || alarmClock3_Input == 0) {
     Blynk.virtualWrite(V7, 0);                                  // stay in current state
     return;
+  }
+  else if (alarmClock3_Button == 1) {                           // Alarm Clock 3 On
+    Alarm.enable(alarmClockId_3);
   }
   else if (alarmClock3_Button == 0) {                           // Alarm Clock 3 Off
     Alarm.free(alarmClockId_3);

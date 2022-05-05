@@ -10,6 +10,13 @@ void countdownTimerDisplay() {
 }
 
 void countdownTimerComplete() {
+  Blynk.logEvent("Countdown_Timer_Clock", "นาฬิกานับถอยหลัง");
+  Blynk.virtualWrite(V12, "HH:MM:SS");    
+  Blynk.virtualWrite(V13, 0);             // set Start_Stop button to waiting for restarting
+  Blynk.virtualWrite(V14, 0);             // set Pause_Continue button to waiting for restarting
+}
+
+void countdownTimerStop() {
   Blynk.virtualWrite(V12, "HH:MM:SS");    
   Blynk.virtualWrite(V13, 0);             // set Start_Stop button to waiting for restarting
   Blynk.virtualWrite(V14, 0);             // set Pause_Continue button to waiting for restarting
@@ -32,7 +39,7 @@ void countdownTimerButton_StartStop(int countdownStart_StopButton) {
     countdownTimer.start();
   } 
   else if (countdownStart_StopButton == 0) {                   // Stop button clicked
-    countdownTimerComplete();
+    countdownTimerStop();
     countdownTimer.stop();
   }
 }
